@@ -325,6 +325,9 @@ interfaces! {
     MediaQueryListEvent: Event;
     MediaRecorder: EventTarget;
     MediaSession;
+    MediaSourceHandle;
+    SourceBuffer: EventTarget;
+    SourceBufferList: EventTarget;
     MediaSource: EventTarget;
     MemoryInfo;
     MIDIPort: EventTarget;
@@ -370,6 +373,10 @@ interfaces! {
     PageTransitionEvent: Event;
     Path2D;
     PaymentResponse: EventTarget;
+    LargestContentfulPaint: PerformanceEntry;
+    PerformanceEventTiming: PerformanceEntry;
+    PerformancePaintTiming: PerformanceEntry;
+    PerformanceServerTiming;
     Performance: EventTarget;
     PerformanceEntry;
     PerformanceMark: PerformanceEntry;

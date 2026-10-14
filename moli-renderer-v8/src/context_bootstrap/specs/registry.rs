@@ -581,6 +581,22 @@ const CONSTRUCTOR_SPECS_BEFORE_STREAMS: &[ConstructorSpec] = &[
         kind: ConstructorKind::WebSocketStream,
     },
     ConstructorSpec {
+        interface: web_api_interfaces::PerformanceServerTiming::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
+    },
+    ConstructorSpec {
+        interface: web_api_interfaces::PerformancePaintTiming::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
+    },
+    ConstructorSpec {
+        interface: web_api_interfaces::PerformanceEventTiming::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
+    },
+    ConstructorSpec {
+        interface: web_api_interfaces::LargestContentfulPaint::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
+    },
+    ConstructorSpec {
         interface: web_api_interfaces::Performance::DESCRIPTOR,
         kind: ConstructorKind::Illegal,
     },
@@ -1366,6 +1382,18 @@ const CONSTRUCTOR_SPECS_AFTER_STREAMS: &[ConstructorSpec] = &[
     ConstructorSpec {
         interface: web_api_interfaces::MediaQueryList::DESCRIPTOR,
         kind: ConstructorKind::MediaQueryList,
+    },
+    ConstructorSpec {
+        interface: web_api_interfaces::SourceBufferList::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
+    },
+    ConstructorSpec {
+        interface: web_api_interfaces::SourceBuffer::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
+    },
+    ConstructorSpec {
+        interface: web_api_interfaces::MediaSourceHandle::DESCRIPTOR,
+        kind: ConstructorKind::Illegal,
     },
     ConstructorSpec {
         interface: web_api_interfaces::MediaSource::DESCRIPTOR,
