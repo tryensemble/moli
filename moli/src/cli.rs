@@ -552,9 +552,11 @@ pub struct CommonArgs {
     #[arg(short = 'P', long)]
     pub profile_dir: Option<String>,
 
+    /// Fetch images. On by default with --layout.
     #[arg(long)]
     pub image: bool,
 
+    /// Fetch web fonts. On by default with --layout.
     #[arg(long)]
     pub font: bool,
 
@@ -587,6 +589,8 @@ pub struct CommonArgs {
     /// Native scrollbars are hidden unless --scrollbars or MOLI_SCROLLBARS is enabled.
     /// With `fetch --eval` or `--eval-file`, refresh layout once before running
     /// the script so geometry APIs can read it. Script mutations do not refresh it.
+    ///
+    /// Images and web fonts are fetched too, so pictures look like the page.
     ///
     /// Without this flag Moli keeps deterministic compatibility
     /// geometry and does not construct layout or paint output.

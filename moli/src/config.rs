@@ -172,6 +172,10 @@ fn apply_common_args(config: &mut AppConfig, common: &CommonArgs) -> Result<()> 
     }
     let mut optional_resource_fetch_mask = if common.resource {
         OptionalResourceFetchMask::ALL
+    } else if common.layout {
+        // Layout exists to produce pictures, and a page without its web fonts
+        // and images doesn't look like the page.
+        OptionalResourceFetchMask::IMAGE | OptionalResourceFetchMask::FONT
     } else {
         OptionalResourceFetchMask::NONE
     };
@@ -348,6 +352,7 @@ mod tests {
     use super::AppConfig;
     use crate::cli::{Cli, Commands};
     use clap::Parser;
+    use moli_core::OptionalResourceFetchMask;
     use std::path::Path;
 
     #[test]
@@ -378,6 +383,38 @@ mod tests {
             assert_eq!(fetch.client_cert(), Some(Path::new("client.pem")));
             assert_eq!(fetch.client_key(), Some(Path::new("client-key.pem")));
             assert_eq!(fetch.client_cert_password(), Some("secret"));
+        }
+    }
+
+    #[test]
+    fn layout_fetches_images_and_fonts_for_fetch_and_serve() {
+        for command in ["fetch", "serve"] {
+            let mask = |extra: &[&str]| {
+                let mut arguments = vec!["moli", command];
+                arguments.extend_from_slice(extra);
+                if command == "fetch" {
+                    arguments.push("https://example.test/");
+                }
+                AppConfig::from_cli(&Cli::parse_from(arguments))
+                    .expect("configuration should build")
+                    .browser
+                    .optional_resource_fetch_mask()
+            };
+            assert_eq!(mask(&[]), OptionalResourceFetchMask::NONE);
+            assert_eq!(
+                mask(&["--layout"]),
+                OptionalResourceFetchMask::IMAGE | OptionalResourceFetchMask::FONT
+            );
+            assert_eq!(
+                mask(&["--layout", "--video"]),
+                OptionalResourceFetchMask::IMAGE
+                    | OptionalResourceFetchMask::FONT
+                    | OptionalResourceFetchMask::VIDEO
+            );
+            assert_eq!(
+                mask(&["--layout", "--resource"]),
+                OptionalResourceFetchMask::ALL
+            );
         }
     }
 }
