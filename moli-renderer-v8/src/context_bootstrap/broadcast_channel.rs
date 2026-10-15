@@ -22,7 +22,6 @@ use moli_webapi_declare::{WebApiFunctionTemplate, WebApiObject};
 const BROADCAST_CHANNEL_ID_SLOT: &str = "__lmBroadcastChannelId";
 const BROADCAST_CHANNEL_NAME_SLOT: &str = "__lmBroadcastChannelName";
 const BROADCAST_CHANNEL_CLOSED_SLOT: &str = "__lmBroadcastChannelClosed";
-const BROADCAST_CHANNEL_LISTENERS_SLOT: &str = "__lmBroadcastChannelListeners";
 const BROADCAST_CHANNEL_ONMESSAGE_SLOT: &str = "__lmBroadcastChannelOnmessage";
 const BROADCAST_CHANNEL_ONMESSAGEERROR_SLOT: &str = "__lmBroadcastChannelOnmessageerror";
 
@@ -44,11 +43,8 @@ struct BroadcastChannelObjectDeclaration<'scope> {
     #[webapi(slot = BROADCAST_CHANNEL_ONMESSAGEERROR_SLOT, init = "null")]
     onmessageerror: (),
 
-    #[webapi(slot = SIMPLE_EVENT_TARGET_SLOT, value = BROADCAST_CHANNEL_LISTENERS_SLOT)]
-    event_target_slot: (),
-
-    #[webapi(slot = SIMPLE_EVENT_TARGET_ORDERED_HANDLERS_SLOT, init = true)]
-    ordered_handlers: (),
+    #[webapi(slot = SIMPLE_EVENT_TARGET_LISTENERS_SLOT, init = "null_object")]
+    event_listeners: (),
 
     #[webapi(
         method,
@@ -519,20 +515,12 @@ fn broadcast_channel_event_handler_setter_callback<'s>(
     ) else {
         return;
     };
-    let value = args.get(0);
-    let stored = if value.is_object() {
-        value
-    } else {
-        v8::null(scope).into()
-    };
-    set_private_value(scope, args.this(), handler.slot_name, stored);
-    simple_object_event_set_ordered_handler(
+    simple_object_event_set_handler(
         scope,
         args.this(),
-        BROADCAST_CHANNEL_LISTENERS_SLOT,
         handler.event_type,
         handler.slot_name,
-        stored.is_object(),
+        args.get(0),
     );
 }
 
@@ -718,13 +706,7 @@ fn dispatch_broadcast_channel_event<'s>(
                     origin,
                     v8::Array::new(scope, 0),
                 ) {
-                    dispatch_simple_event_target_event(
-                        scope,
-                        target,
-                        BROADCAST_CHANNEL_LISTENERS_SLOT,
-                        "messageerror",
-                        event,
-                    );
+                    dispatch_simple_event_target_event(scope, target, "messageerror", event);
                     return true;
                 }
                 return false;
@@ -734,13 +716,7 @@ fn dispatch_broadcast_channel_event<'s>(
                 && let Some(event) =
                     new_broadcast_channel_message_event(scope, "message", data, origin, ports)
             {
-                dispatch_simple_event_target_event(
-                    scope,
-                    target,
-                    BROADCAST_CHANNEL_LISTENERS_SLOT,
-                    "message",
-                    event,
-                );
+                dispatch_simple_event_target_event(scope, target, "message", event);
                 return true;
             }
             if let Some(event) = new_broadcast_channel_message_event(
@@ -750,13 +726,7 @@ fn dispatch_broadcast_channel_event<'s>(
                 origin,
                 v8::Array::new(scope, 0),
             ) {
-                dispatch_simple_event_target_event(
-                    scope,
-                    target,
-                    BROADCAST_CHANNEL_LISTENERS_SLOT,
-                    "messageerror",
-                    event,
-                );
+                dispatch_simple_event_target_event(scope, target, "messageerror", event);
                 return true;
             }
         }

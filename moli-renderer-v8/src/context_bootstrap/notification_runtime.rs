@@ -1,6 +1,7 @@
 use super::{
-    SIMPLE_EVENT_TARGET_ORDERED_HANDLERS_SLOT, SIMPLE_EVENT_TARGET_SLOT, global_constructor_object,
+    SIMPLE_EVENT_TARGET_LISTENERS_SLOT, global_constructor_object,
     simple_event_target_add_event_listener_callback, simple_event_target_dispatch_event_callback,
+    simple_event_target_handler_getter_callback, simple_event_target_handler_setter_callback,
     simple_event_target_remove_event_listener_callback, structured_clone_value_for_storage,
 };
 use crate::web_api_interfaces;
@@ -37,7 +38,6 @@ const NOTIFICATION_REQUIRE_INTERACTION_SLOT: &str = "__lmNotificationRequireInte
 const NOTIFICATION_ACTIONS_SLOT: &str = "__lmNotificationActions";
 const NOTIFICATION_RECORD_ID_SLOT: &str = "__lmNotificationRecordId";
 const NOTIFICATION_RECORD_REGISTRATION_ID_SLOT: &str = "__lmNotificationRecordRegistrationId";
-const NOTIFICATION_LISTENERS_SLOT: &str = "__lmNotificationListeners";
 const NOTIFICATION_MAX_ACTIONS: usize = 2;
 
 pub(crate) struct NotificationOptionsPayload {
@@ -95,23 +95,8 @@ struct NotificationObjectDeclaration<'scope> {
     #[webapi(slot = NOTIFICATION_ACTIONS_SLOT)]
     actions: v8::Local<'scope, v8::Value>,
 
-    #[webapi(slot = SIMPLE_EVENT_TARGET_SLOT, value = NOTIFICATION_LISTENERS_SLOT)]
-    event_target_slot: (),
-
-    #[webapi(slot = SIMPLE_EVENT_TARGET_ORDERED_HANDLERS_SLOT, init = true)]
-    ordered_handlers: (),
-
-    #[webapi(data_property = "onclick", init = "null")]
-    onclick: (),
-
-    #[webapi(data_property = "onerror", init = "null")]
-    onerror: (),
-
-    #[webapi(data_property = "onshow", init = "null")]
-    onshow: (),
-
-    #[webapi(data_property = "onclose", init = "null")]
-    onclose: (),
+    #[webapi(slot = SIMPLE_EVENT_TARGET_LISTENERS_SLOT, init = "null_object")]
+    event_listeners: (),
 
     #[webapi(
         method,
@@ -141,6 +126,47 @@ struct NotificationObjectDeclaration<'scope> {
 #[derive(WebApiFunctionTemplate)]
 #[webapi(interface = web_api_interfaces::Notification)]
 struct NotificationPrototypeDeclaration {
+    #[webapi(
+        accessor_property = "onclick",
+        getter = simple_event_target_handler_getter_callback,
+        setter = simple_event_target_handler_setter_callback,
+        data = v8str(scope, "onclick"),
+        setter_data = v8str(scope, "onclick"),
+        enumerable,
+        receiver = web_api_interfaces::Notification::is_instance
+    )]
+    onclick: (),
+    #[webapi(
+        accessor_property = "onerror",
+        getter = simple_event_target_handler_getter_callback,
+        setter = simple_event_target_handler_setter_callback,
+        data = v8str(scope, "onerror"),
+        setter_data = v8str(scope, "onerror"),
+        enumerable,
+        receiver = web_api_interfaces::Notification::is_instance
+    )]
+    onerror: (),
+    #[webapi(
+        accessor_property = "onshow",
+        getter = simple_event_target_handler_getter_callback,
+        setter = simple_event_target_handler_setter_callback,
+        data = v8str(scope, "onshow"),
+        setter_data = v8str(scope, "onshow"),
+        enumerable,
+        receiver = web_api_interfaces::Notification::is_instance
+    )]
+    onshow: (),
+    #[webapi(
+        accessor_property = "onclose",
+        getter = simple_event_target_handler_getter_callback,
+        setter = simple_event_target_handler_setter_callback,
+        data = v8str(scope, "onclose"),
+        setter_data = v8str(scope, "onclose"),
+        enumerable,
+        receiver = web_api_interfaces::Notification::is_instance
+    )]
+    onclose: (),
+
     #[webapi(
         accessor_property,
         getter = notification_title_getter_callback,
@@ -926,12 +952,8 @@ fn initialize_notification_object<'s>(
         silent,
         require_interaction: metadata.require_interaction,
         actions: action_array,
-        event_target_slot: (),
-        ordered_handlers: (),
-        onclick: (),
-        onerror: (),
-        onshow: (),
-        onclose: (),
+        event_listeners: (),
+
         add_event_listener: (),
         remove_event_listener: (),
         dispatch_event: (),

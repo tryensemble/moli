@@ -1,5 +1,6 @@
 use crate::context_bootstrap::{
-    dispatch_simple_event_target_event, mark_simple_event_target_slot, set_text_track_cue_track,
+    dispatch_simple_event_target_event, initialize_simple_event_target, set_text_track_cue_track,
+    simple_object_event_set_handler,
 };
 use crate::document_runtime::DomHandle;
 use crate::dom::native::Node;
@@ -26,7 +27,6 @@ use super::super::{
 const TEXT_TRACK_CACHE_SLOT: &str = "__moliTextTrack";
 const TEXT_TRACKS_CACHE_SLOT: &str = "__moliTextTracks";
 const TEXT_TRACKS_MANUAL_SLOT: &str = "__moliTextTracksManual";
-const TEXT_TRACK_LIST_LISTENERS_SLOT: &str = "__moliTextTrackListListeners";
 const TEXT_TRACK_OWNER_HANDLE_SLOT: &str = "__moliTextTrackOwnerHandle";
 const TEXT_TRACK_MEDIA_HANDLE_SLOT: &str = "__moliTextTrackMediaHandle";
 const TEXT_TRACK_KIND_SLOT: &str = "__moliTextTrackKind";
@@ -364,7 +364,7 @@ fn make_text_track_list<'s>(scope: &mut v8::PinScope<'s, '_>) -> Option<v8::Loca
     let list = TextTrackListObjectDeclaration::new(Vec::new())
         .bind(scope)
         .ok()?;
-    mark_simple_event_target_slot(scope, list, TEXT_TRACK_LIST_LISTENERS_SLOT);
+    initialize_simple_event_target(scope, list);
     update_indexed_list(scope, list, &[]);
     Some(list)
 }
@@ -434,6 +434,7 @@ fn text_track_list_onaddtrack_setter<'s>(
         scope,
         receiver,
         args.get(0),
+        "addtrack",
         TEXT_TRACK_LIST_ONADDTRACK_SLOT,
     );
 }
@@ -461,6 +462,7 @@ fn text_track_list_onremovetrack_setter<'s>(
         scope,
         receiver,
         args.get(0),
+        "removetrack",
         TEXT_TRACK_LIST_ONREMOVETRACK_SLOT,
     );
 }
@@ -521,7 +523,7 @@ fn make_text_track<'s>(
     )
     .bind(scope)
     .ok()?;
-    mark_simple_event_target_slot(scope, track, "__moliTextTrackListeners");
+    initialize_simple_event_target(scope, track);
     let cues = make_cue_list(scope)?;
     let active_cues = make_cue_list(scope)?;
     set_private_value(scope, track, TEXT_TRACK_CUES_SLOT, cues.into());
@@ -910,7 +912,13 @@ fn text_track_oncuechange_setter<'s>(
     let Some(receiver) = text_track_receiver(scope, &args) else {
         return;
     };
-    text_track_event_handler_setter(scope, receiver, args.get(0), TEXT_TRACK_ONCUECHANGE_SLOT);
+    text_track_event_handler_setter(
+        scope,
+        receiver,
+        args.get(0),
+        "cuechange",
+        TEXT_TRACK_ONCUECHANGE_SLOT,
+    );
 }
 
 fn text_track_event_handler_getter<'s>(
@@ -926,18 +934,10 @@ fn text_track_event_handler_setter<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     receiver: v8::Local<'s, v8::Object>,
     value: v8::Local<'s, v8::Value>,
+    event_type: &str,
     slot: &'static str,
 ) {
-    set_private_value(
-        scope,
-        receiver,
-        slot,
-        if value.is_function() {
-            value
-        } else {
-            v8::null(scope).into()
-        },
-    );
+    simple_object_event_set_handler(scope, receiver, event_type, slot, value);
 }
 
 fn text_track_add_cue_callback<'s>(
@@ -1687,13 +1687,7 @@ pub(crate) fn dispatch_text_track_list_event<'s>(
         return false;
     };
     if let Some(event) = construct_event(scope, "TrackEvent", event_type, init) {
-        let _ = dispatch_simple_event_target_event(
-            scope,
-            list,
-            TEXT_TRACK_LIST_LISTENERS_SLOT,
-            event_type,
-            event,
-        );
+        let _ = dispatch_simple_event_target_event(scope, list, event_type, event);
         true
     } else {
         false

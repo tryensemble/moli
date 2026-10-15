@@ -52,8 +52,7 @@ use super::{
 use crate::context_bootstrap::WebCryptoTaskResult;
 use crate::context_bootstrap::{
     WebCryptoRejection, install_simple_event_target_methods,
-    install_simple_event_target_ordered_handlers, simple_object_event_listeners_snapshot,
-    simple_object_event_set_ordered_handler,
+    simple_object_event_listeners_snapshot, simple_object_event_set_handler,
 };
 use crate::network::loads::{ResourceLoadDisposition, ResourceLoadKind, ResourceLoadLease};
 use crate::network_host::xhr_has_upload_listeners;
@@ -179,7 +178,7 @@ pub(crate) use content_security_policy::{
     worker_trusted_types_for_script_requirements,
 };
 use event_handlers::install_worker_global_event_handler_accessors;
-pub(super) use event_handlers::{WORKER_GLOBAL_LISTENERS_SLOT, service_worker_fetch_handler_type};
+pub(super) use event_handlers::service_worker_fetch_handler_type;
 use extendable_events::install_service_worker_extendable_event_constructors;
 pub(super) use extendable_events::{
     PendingServiceWorkerFetchEvent, PendingServiceWorkerLifecycleEvent,

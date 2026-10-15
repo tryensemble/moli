@@ -2,14 +2,13 @@ use crate::{
     context_bootstrap::{
         dispatch_simple_event_target_event, install_child_window_eval_runtime_state,
         install_child_window_own_methods, install_simple_event_target_methods,
+        install_simple_window_event_handlers,
     },
     util::v8str,
 };
 use moli_webapi_declare::WebApiObject;
 
 use super::iframe_window_message_event::{detached_window_message_event, detached_window_origin};
-
-const DETACHED_IFRAME_WINDOW_EVENT_LISTENERS_SLOT: &str = "__lmDetachedIframeWindowEventListeners";
 
 #[derive(Default, WebApiObject)]
 #[webapi(plain)]
@@ -22,12 +21,8 @@ pub(super) fn install_detached_iframe_window_messaging<'s>(
     scope: &mut v8::PinScope<'s, '_>,
     window: v8::Local<'s, v8::Object>,
 ) {
-    install_simple_event_target_methods(
-        scope,
-        window,
-        DETACHED_IFRAME_WINDOW_EVENT_LISTENERS_SLOT,
-        false,
-    );
+    install_simple_event_target_methods(scope, window);
+    install_simple_window_event_handlers(scope, window);
     let _ = DetachedIframeWindowMethodsDeclaration::default().initialize(scope, window);
     let _ = install_child_window_own_methods(scope, window);
     let _ = install_child_window_eval_runtime_state(scope, window);
@@ -133,12 +128,6 @@ fn detached_iframe_window_post_message<'s>(
         rv.set_undefined();
         return;
     };
-    dispatch_simple_event_target_event(
-        scope,
-        target,
-        DETACHED_IFRAME_WINDOW_EVENT_LISTENERS_SLOT,
-        event_type,
-        event,
-    );
+    dispatch_simple_event_target_event(scope, target, event_type, event);
     rv.set_undefined();
 }

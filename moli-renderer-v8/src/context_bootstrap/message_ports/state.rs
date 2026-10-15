@@ -262,8 +262,8 @@ fn new_message_port_wrapper<'s>(
         .ok()?;
     // Event listeners belong to the JS EventTarget, independently of the
     // transferable communication endpoint and its queue attachment.
-    mark_simple_event_target_slot(scope, port, MESSAGE_PORT_EVENT_LISTENERS_SLOT);
-    install_simple_event_target_ordered_handlers(scope, port);
+    initialize_simple_event_target(scope, port);
+
     Some(port)
 }
 
@@ -520,21 +520,7 @@ fn set_message_port_event_handler<'s>(
     handler_slot: &'static str,
     event_type: &str,
 ) {
-    let active = value.is_object();
-    let handler = if active {
-        value
-    } else {
-        v8::null(scope).into()
-    };
-    set_message_port_slot_value(scope, port, handler_slot, handler);
-    simple_object_event_set_ordered_handler(
-        scope,
-        port,
-        MESSAGE_PORT_EVENT_LISTENERS_SLOT,
-        event_type,
-        handler_slot,
-        active,
-    );
+    simple_object_event_set_handler(scope, port, event_type, handler_slot, value);
     // Setting onmessage enables the queue permanently, including assigning
     // null or a non-callable value. Listener registration alone does not.
     if handler_slot == MESSAGE_PORT_ONMESSAGE_HANDLER_SLOT {

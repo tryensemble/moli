@@ -48,11 +48,8 @@ struct WebSocketObjectDeclaration {
     #[webapi(slot = WEBSOCKET_ONCLOSE_SLOT, init = "null")]
     onclose: (),
 
-    #[webapi(slot = SIMPLE_EVENT_TARGET_SLOT, value = WEBSOCKET_LISTENERS_SLOT)]
-    event_target_slot: (),
-
-    #[webapi(slot = SIMPLE_EVENT_TARGET_ORDERED_HANDLERS_SLOT, init = true)]
-    ordered_handlers: (),
+    #[webapi(slot = SIMPLE_EVENT_TARGET_LISTENERS_SLOT, init = "null_object")]
+    event_listeners: (),
 
     #[webapi(method, enumerable, callback = simple_event_target_add_event_listener_callback)]
     add_event_listener: (),

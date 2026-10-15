@@ -1,9 +1,19 @@
 <p align="center">
-  <img
-    src="../assets/moli-browser-banner.jpg"
-    alt="Moli 浏览器——结构优先，按需生成像素，面向 AI 智能体的开源浏览器。"
-    width="1086"
-  />
+  <picture>
+    <source
+      media="(prefers-color-scheme: dark)"
+      srcset="../assets/moli-browser-banner-dark.jpg"
+    />
+    <source
+      media="(prefers-color-scheme: light)"
+      srcset="../assets/moli-browser-banner.jpg"
+    />
+    <img
+      src="../assets/moli-browser-banner.jpg"
+      alt="Moli 浏览器——结构优先，按需生成像素，面向 AI 智能体的开源浏览器。"
+      width="1086"
+    />
+  </picture>
 </p>
 
 <h1 align="center">Moli</h1>
@@ -14,7 +24,8 @@
   <a href="README.ja.md">日本語</a> |
   <a href="README.de.md">Deutsch</a> |
   <a href="README.fr.md">Français</a> |
-  <a href="README.es.md">Español</a>
+  <a href="README.es.md">Español</a> |
+  <a href="README.ko.md">한국어</a>
 </p>
 
 <p align="center">
