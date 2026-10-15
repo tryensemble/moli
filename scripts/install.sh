@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-moli_release_base_url=${MOLI_RELEASE_BASE_URL:-https://github.com/lexmount/moli/releases/latest/download}
+moli_release_base_url=${MOLI_RELEASE_BASE_URL:-https://github.com/tryensemble/moli/releases/latest/download}
 moli_install_dir=${MOLI_INSTALL_DIR:-${HOME:?HOME is not set}/.local/bin}
 moli_tmp_dir=
 moli_staged_binary=
