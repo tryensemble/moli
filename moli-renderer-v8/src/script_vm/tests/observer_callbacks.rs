@@ -21,6 +21,133 @@ fn observer_callback_test_vm(url: &str) -> StandaloneScriptVmHarness {
 }
 
 #[test]
+fn borrowed_performance_methods_use_receiver_timeline_and_entry_realms() {
+    let mut vm = observer_callback_test_vm("https://performance-borrowed-method-realms.test/");
+    let source = format!(
+        "({})(window, __observerCallbackFrame.contentWindow).then(result => globalThis.__borrowedTimeline = result, error => globalThis.__borrowedTimeline = {{ error: String(error) }});",
+        include_str!("performance_timeline_borrowed_methods.js"),
+    );
+    vm.eval(&source)
+        .expect("queue borrowed mark and measure deliveries");
+    assert_eq!(
+        vm.eval("JSON.stringify(__borrowedTimeline)").unwrap(),
+        r#"{"received":{"parent":["parent-mark","parent-measure"],"child":["child-mark","child-measure"]},"failures":[]}"#,
+    );
+}
+
+#[test]
+fn borrowed_performance_observe_reads_and_delivers_the_observers_own_buffer() {
+    let mut vm = observer_callback_test_vm("https://performance-borrowed-buffered-observe.test/");
+    vm.eval(
+        r#"
+(() => {
+  const child = __observerCallbackFrame.contentWindow;
+  globalThis.__borrowedBuffered = { parent: [], child: [] };
+  performance.mark('parent-buffered');
+  child.performance.mark('child-buffered');
+  const parentObserver = new PerformanceObserver(list => {
+    __borrowedBuffered.parent.push(...list.getEntries().map(entry => entry.name));
+  });
+  const childObserver = new child.PerformanceObserver(list => {
+    __borrowedBuffered.child.push(...list.getEntries().map(entry => entry.name));
+  });
+  child.PerformanceObserver.prototype.observe.call(parentObserver, { type: 'mark', buffered: true });
+  PerformanceObserver.prototype.observe.call(childObserver, { type: 'mark', buffered: true });
+})()
+"#,
+    )
+    .expect("subscribe to buffers using the other Realm's observe method");
+    assert_eq!(
+        vm.eval("JSON.stringify(__borrowedBuffered)").unwrap(),
+        r#"{"parent":["parent-buffered"],"child":["child-buffered"]}"#,
+    );
+}
+
+#[test]
+fn borrowed_performance_delivery_survives_retirement_of_the_method_realm() {
+    let mut vm = observer_callback_test_vm("https://performance-method-realm-retirement.test/");
+    vm.eval(
+        r#"
+(() => {
+  const child = __observerCallbackFrame.contentWindow;
+  globalThis.__survivingTimeline = [];
+  new PerformanceObserver(list => {
+    __survivingTimeline.push(...list.getEntries().map(entry => entry.name));
+  }).observe({ type: 'mark' });
+  const mark = child.Performance.prototype.mark;
+  mark.call(performance, 'before-method-realm-retirement');
+  __observerCallbackFrame.remove();
+  mark.call(performance, 'after-method-realm-retirement');
+})()
+"#,
+    )
+    .expect("retire the method Realm after queuing to the surviving timeline");
+    assert_eq!(
+        vm.eval("JSON.stringify(__survivingTimeline)").unwrap(),
+        r#"["before-method-realm-retirement","after-method-realm-retirement"]"#,
+    );
+}
+
+#[test]
+fn common_callback_registry_keeps_active_observers_until_owner_teardown() {
+    let mut vm = new_storage_test_vm("https://performance-observer-active-root.test/");
+    let common = std::rc::Rc::clone(&vm._context_host.borrow().common);
+    vm.eval(
+        r#"
+globalThis.__activeObserverEntries = [];
+new PerformanceObserver(list => {
+  __activeObserverEntries.push(...list.getEntries().map(entry => entry.name));
+}).observe({ type: 'mark' });
+"#,
+    )
+    .expect("register an observer with no independent JS root");
+    vm.renderer_document_isolate_ops()
+        .collect_renderer_document_isolate_garbage()
+        .expect("collect unreachable observer wrappers");
+    assert_eq!(common.callbacks.len(), 1);
+    vm.eval("performance.mark('after-gc')")
+        .expect("deliver to the active observer after GC");
+    assert_eq!(
+        vm.eval("JSON.stringify(__activeObserverEntries)").unwrap(),
+        r#"["after-gc"]"#,
+    );
+    drop(vm);
+    assert_eq!(common.callbacks.len(), 0);
+    assert_eq!(common.finalizer_count(), 0);
+}
+
+#[test]
+fn performance_observer_registration_uses_its_own_global_with_a_foreign_callback_realm() {
+    let mut vm = observer_callback_test_vm("https://performance-observer-global-isolation.test/");
+    vm.eval(
+        r#"
+(() => {
+  const child = __observerCallbackFrame.contentWindow;
+  globalThis.__timelineEntries = { parent: [], child: [], callbackRealms: [] };
+  globalThis.__parentTimelineObserver = new PerformanceObserver(child.Function(
+    'list',
+    `parent.__timelineEntries.parent.push(...list.getEntries().map(entry => entry.name));
+     parent.__timelineEntries.callbackRealms.push(globalThis === parent.__observerCallbackFrame.contentWindow);`
+  ));
+  globalThis.__childTimelineObserver = new child.PerformanceObserver(list => {
+    __timelineEntries.child.push(...list.getEntries().map(entry => entry.name));
+    __timelineEntries.callbackRealms.push(globalThis === window);
+  });
+  __parentTimelineObserver.observe({ type: 'mark' });
+  __childTimelineObserver.observe({ type: 'mark' });
+  performance.mark('parent-only');
+  child.performance.mark('child-only');
+})()
+"#,
+    )
+    .expect("queue separate global timelines with crossed callback realms");
+    assert_eq!(
+        vm.eval("JSON.stringify(__timelineEntries)").unwrap(),
+        r#"{"parent":["parent-only"],"child":["child-only"],"callbackRealms":[true,true]}"#,
+    );
+}
+
+#[test]
 fn document_preinsert_validation_precedes_mutation_and_adoption() {
     let mut vm = observer_callback_test_vm("https://document-preinsert.test/");
     assert_eq!(
@@ -300,9 +427,7 @@ fn js_owned_observer_callback_cycles_remain_v8_collectable() {
         .expect("JS-owned observer callback cycles should be created");
     assert_eq!(created, "256");
     assert_eq!(
-        crate::observer_runtime::callback_binding_count_for_test(
-            &mut vm._context_host.borrow_mut()
-        ),
+        vm._context_host.borrow().common.callbacks.len(),
         256,
         "each unreachable observer must still start with one exact callback identity binding"
     );
@@ -315,9 +440,7 @@ fn js_owned_observer_callback_cycles_remain_v8_collectable() {
         .expect("renderer isolate GC should complete");
 
     assert_eq!(
-        crate::observer_runtime::callback_binding_count_for_test(
-            &mut vm._context_host.borrow_mut()
-        ),
+        vm._context_host.borrow().common.callbacks.len(),
         0,
         "a Rust callback registry must not root an unreachable callback-observer cycle"
     );
